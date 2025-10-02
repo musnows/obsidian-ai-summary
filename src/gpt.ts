@@ -5,7 +5,8 @@ interface GPTResponse {
 }
 
 export async function promptGPTChat(
-  prompt: string,
+  systemPrompt: string,
+  userContent: string,
   apiKey: string,
   baseUrl: string,
   model: string,
@@ -19,7 +20,10 @@ export async function promptGPTChat(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      messages: [{ role: "system", content: prompt }],
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent }
+      ],
       model: model,
       temperature: 0.7,
       max_tokens: maxTokens,
@@ -36,7 +40,6 @@ export async function promptGPTChat(
     ?.pipeThrough(new TextDecoderStream())
     .getReader();
   let content = "";
-  let gotDoneMessage = false;
   while (true) {
     const res = await reader?.read();
     if (res?.done) break;
@@ -46,7 +49,6 @@ export async function promptGPTChat(
     for (const line of lines) {
       const lineMessage = line.replace(/^data: /, "");
       if (lineMessage === "[DONE]") {
-        gotDoneMessage = true;
         break;
       }
       try {

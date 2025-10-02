@@ -53,10 +53,8 @@ export default class AiSummaryPlugin extends Plugin {
       return "No referenced notes found.";
     }
     await promptGPTChat(
-      this.generateGPTPrompt(
-        referencedNotes,
-        frontMatter["prompt"] ?? this.settings.defaultPrompt
-      ),
+      frontMatter["prompt"] ?? this.settings.defaultPrompt,
+      this.generateGPTPrompt(referencedNotes),
       this.settings.openAiApiKey,
       this.settings.baseUrl,
       this.settings.model,
@@ -88,10 +86,9 @@ export default class AiSummaryPlugin extends Plugin {
       return "The current document is empty.";
     }
 
-    const prompt = `Please summarize the following document:\n\n${contentWithoutFrontmatter}\n\n${frontMatter["prompt"] ?? this.settings.defaultPrompt}`;
-
     await promptGPTChat(
-      prompt,
+      frontMatter["prompt"] ?? this.settings.defaultPrompt,
+      contentWithoutFrontmatter,
       this.settings.openAiApiKey,
       this.settings.baseUrl,
       this.settings.model,
@@ -107,13 +104,13 @@ export default class AiSummaryPlugin extends Plugin {
     return !!markdownView?.file;
   }
 
-  generateGPTPrompt(notes: string[], queryPrompt: string): string {
+  generateGPTPrompt(notes: string[]): string {
     let prompt = "";
     for (const note of notes) {
       prompt += note;
       prompt += "----";
     }
-    return prompt + queryPrompt;
+    return prompt;
   }
 
   async getReferencedContent(

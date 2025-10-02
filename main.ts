@@ -66,6 +66,42 @@ export default class AiSummaryPlugin extends Plugin {
     return "Summary written.";
   }
 
+  async summarizeCurrentDocument(): Promise<string> {
+    const dialog = new ResultDialog(this.app);
+    dialog.open();
+
+    const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+    const file = markdownView?.file;
+    if (!file) {
+      dialog.close();
+      return "No note open.";
+    }
+
+    const content = await this.app.vault.cachedRead(file);
+    const frontMatter = this.extractFrontmatter(content);
+
+    // Remove frontmatter from content for summarization
+    const contentWithoutFrontmatter = content.replace(/^---\n[\s\S]*?\n---\n/, '');
+
+    if (!contentWithoutFrontmatter.trim()) {
+      dialog.addContent("The current document is empty.");
+      return "The current document is empty.";
+    }
+
+    const prompt = `Please summarize the following document:\n\n${contentWithoutFrontmatter}\n\n${frontMatter["prompt"] ?? this.settings.defaultPrompt}`;
+
+    await promptGPTChat(
+      prompt,
+      this.settings.openAiApiKey,
+      this.settings.baseUrl,
+      this.settings.model,
+      this.settings.maxTokens,
+      dialog
+    );
+
+    return "Document summary generated.";
+  }
+
   hasOpenNote(): boolean {
     const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
     return !!markdownView?.file;
@@ -152,6 +188,19 @@ export default class AiSummaryPlugin extends Plugin {
         }
         (async () => {
           new Notice(await this.generateSummary());
+        })();
+      },
+    });
+
+    this.addCommand({
+      id: "summarize-current-document",
+      name: "Summarize current document",
+      checkCallback: (checking: boolean) => {
+        if (checking) {
+          return this.hasOpenNote();
+        }
+        (async () => {
+          new Notice(await this.summarizeCurrentDocument());
         })();
       },
     });

@@ -305,7 +305,7 @@ class AiSummarySettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Default prompt")
-      .setDesc("Default prompt")
+      .setDesc("Default system prompt")
       .addTextArea((text) =>
         text
           .setPlaceholder("Prompt")

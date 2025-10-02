@@ -15,6 +15,7 @@ import { ResultDialog } from "src/ui/result_dialog";
 const defaultMaxTokens = 2000;
 interface AiSummaryPluginSettings {
   openAiApiKey: string;
+  baseUrl: string;
   model: string;
   maxTokens: number;
   defaultPrompt: string;
@@ -22,6 +23,7 @@ interface AiSummaryPluginSettings {
 
 const DEFAULT_SETTINGS: AiSummaryPluginSettings = {
   openAiApiKey: "",
+  baseUrl: "https://api.openai.com/v1",
   model: "gpt-3.5-turbo",
   maxTokens: defaultMaxTokens,
   defaultPrompt:
@@ -56,6 +58,7 @@ export default class AiSummaryPlugin extends Plugin {
         frontMatter["prompt"] ?? this.settings.defaultPrompt
       ),
       this.settings.openAiApiKey,
+      this.settings.baseUrl,
       this.settings.model,
       this.settings.maxTokens,
       dialog
@@ -197,12 +200,24 @@ class AiSummarySettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Base URL")
+      .setDesc("Base URL for API requests")
+      .addText((text) =>
+        text
+          .setPlaceholder("https://api.openai.com/v1")
+          .setValue(this.plugin.settings.baseUrl)
+          .onChange(async (value) => {
+            this.plugin.settings.baseUrl = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
       .setName("Model")
-      .setDesc("Select the model")
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption("gpt-3.5-turbo", "gpt-3.5-turbo (16k)")
-          .addOption("gpt-4-turbo-preview", "gpt-4-turbo-preview (128k)")
+      .setDesc("Enter the model name")
+      .addText((text) =>
+        text
+          .setPlaceholder("gpt-3.5-turbo")
           .setValue(this.plugin.settings.model)
           .onChange(async (value) => {
             this.plugin.settings.model = value;

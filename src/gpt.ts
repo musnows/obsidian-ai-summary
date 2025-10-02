@@ -1,5 +1,4 @@
 import { ResultDialog } from "./ui/result_dialog";
-const url = "https://api.openai.com/v1/chat/completions";
 
 interface GPTResponse {
   choices: { message: { content: string } }[];
@@ -8,6 +7,7 @@ interface GPTResponse {
 export async function promptGPTChat(
   prompt: string,
   apiKey: string,
+  baseUrl: string,
   model: string,
   maxTokens: number,
   dialog: ResultDialog
@@ -30,6 +30,7 @@ export async function promptGPTChat(
     }),
   };
 
+  const url = `${baseUrl}/chat/completions`;
   const response = await fetch(url, requestOptions);
   const reader = response.body
     ?.pipeThrough(new TextDecoderStream())

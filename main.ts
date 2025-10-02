@@ -37,66 +37,82 @@ export default class AiSummaryPlugin extends Plugin {
     const dialog = new ResultDialog(this.app);
     dialog.open();
 
-    const { vault } = this.app;
+    try {
+      const { vault } = this.app;
 
-    const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+      const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
 
-    const file = markdownView?.file;
-    if (!file) return "No note open.";
+      const file = markdownView?.file;
+      if (!file) {
+        dialog.addContent("[AI-SUMMARY] Error: No note is currently open.");
+        return "No note open.";
+      }
 
-    const content = await vault.cachedRead(file);
-    const frontMatter = this.extractFrontmatter(content);
+      const content = await vault.cachedRead(file);
+      const frontMatter = this.extractFrontmatter(content);
 
-    const referencedNotes = await this.getReferencedContent(content, file);
-    if (!referencedNotes || referencedNotes.length === 0) {
-      dialog.addContent("No referenced notes found.");
-      return "No referenced notes found.";
+      const referencedNotes = await this.getReferencedContent(content, file);
+      if (!referencedNotes || referencedNotes.length === 0) {
+        dialog.addContent("[AI-SUMMARY] No referenced notes found.");
+        return "No referenced notes found.";
+      }
+
+      await promptGPTChat(
+        frontMatter["prompt"] ?? this.settings.defaultPrompt,
+        this.generateGPTPrompt(referencedNotes),
+        this.settings.openAiApiKey,
+        this.settings.baseUrl,
+        this.settings.model,
+        this.settings.maxTokens,
+        dialog
+      );
+      return "Summary written.";
+    } catch (error) {
+      console.error("[AI-SUMMARY] Error generating summary:", error);
+      dialog.addContent(`[AI-SUMMARY] Error: Failed to generate summary - ${error.message}`);
+      return "Failed to generate summary.";
     }
-    await promptGPTChat(
-      frontMatter["prompt"] ?? this.settings.defaultPrompt,
-      this.generateGPTPrompt(referencedNotes),
-      this.settings.openAiApiKey,
-      this.settings.baseUrl,
-      this.settings.model,
-      this.settings.maxTokens,
-      dialog
-    );
-    return "Summary written.";
   }
 
   async summarizeCurrentDocument(): Promise<string> {
     const dialog = new ResultDialog(this.app);
     dialog.open();
 
-    const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-    const file = markdownView?.file;
-    if (!file) {
-      dialog.close();
-      return "No note open.";
+    try {
+      const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+      const file = markdownView?.file;
+      if (!file) {
+        dialog.addContent("[AI-SUMMARY] Error: No note is currently open.");
+        return "No note open.";
+      }
+
+      const content = await this.app.vault.cachedRead(file);
+      const frontMatter = this.extractFrontmatter(content);
+
+      // Remove frontmatter from content for summarization
+      const contentWithoutFrontmatter = content.replace(/^---\n[\s\S]*?\n---\n/, '');
+
+      if (!contentWithoutFrontmatter.trim()) {
+        dialog.addContent("[AI-SUMMARY] The current document is empty.");
+        return "The current document is empty.";
+      }
+
+      await promptGPTChat(
+        frontMatter["prompt"] ?? this.settings.defaultPrompt,
+        contentWithoutFrontmatter,
+        this.settings.openAiApiKey,
+        this.settings.baseUrl,
+        this.settings.model,
+        this.settings.maxTokens,
+        dialog
+      );
+
+      return "Document summary generated.";
+    } catch (error) {
+      console.error("[AI-SUMMARY] Error generating document summary:", error);
+      dialog.addContent(`[AI-SUMMARY] Error: Failed to generate document summary - ${error.message}`);
+      return "Failed to generate document summary.";
     }
-
-    const content = await this.app.vault.cachedRead(file);
-    const frontMatter = this.extractFrontmatter(content);
-
-    // Remove frontmatter from content for summarization
-    const contentWithoutFrontmatter = content.replace(/^---\n[\s\S]*?\n---\n/, '');
-
-    if (!contentWithoutFrontmatter.trim()) {
-      dialog.addContent("The current document is empty.");
-      return "The current document is empty.";
-    }
-
-    await promptGPTChat(
-      frontMatter["prompt"] ?? this.settings.defaultPrompt,
-      contentWithoutFrontmatter,
-      this.settings.openAiApiKey,
-      this.settings.baseUrl,
-      this.settings.model,
-      this.settings.maxTokens,
-      dialog
-    );
-
-    return "Document summary generated.";
   }
 
   hasOpenNote(): boolean {
